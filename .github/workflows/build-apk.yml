@@ -1,0 +1,47 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # If you uploaded the project as a single .zip file, unpack it first.
+      - name: Prepare project
+        run: |
+          if [ ! -f settings.gradle ]; then
+            ZIP=$(ls ./*.zip 2>/dev/null | head -n1)
+            if [ -z "$ZIP" ]; then ZIP=$(find . -name "*.zip" -not -path "./_src/*" | head -n1); fi
+            if [ -z "$ZIP" ]; then echo "No project zip found"; exit 1; fi
+            echo "Using $ZIP"
+            unzip -q "$ZIP" -d _src
+            DIR=$(dirname "$(find _src -name settings.gradle | head -n1)")
+            cp -r "$DIR"/. .
+          fi
+          ls -la
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: |
+          gradle assembleDebug --no-daemon --console=plain > build.log 2>&1 || {
+            echo "=========== ERRORS ==========="
+            grep -E "error:|What went wrong|Execution failed|warning: \[|cannot find symbol|symbol:|location:" -A3 build.log | grep -v "^\s*at " | head -60
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-GameSpace-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
