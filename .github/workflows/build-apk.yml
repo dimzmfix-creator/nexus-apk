@@ -35,7 +35,7 @@ jobs:
 
       - name: Build debug APK
         run: |
-          gradle assembleDebug --no-daemon --console=plain > build.log 2>&1 || {
+          gradle assembleDebug -Pandroid.useAndroidX=true -Pandroid.enableJetifier=false --no-daemon --console=plain > build.log 2>&1 || {
             echo "=========== ERRORS ==========="
             grep -E "error:|What went wrong|Execution failed|warning: \[|cannot find symbol|symbol:|location:" -A3 build.log | grep -v "^\s*at " | head -60
             exit 1
